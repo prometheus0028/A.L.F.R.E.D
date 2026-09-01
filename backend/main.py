@@ -238,3 +238,58 @@ async def reject_task_endpoint(task_id: str, request: RejectRequest):
         "status": "failed",
         "message": reason
     }
+
+@app.post("/api/tasks/{task_id}/confirm-delete")
+async def confirm_delete_endpoint(task_id: str):
+    """Confirm a pending file deletion."""
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail={"code": "TASK_NOT_FOUND", "message": "Task not found."})
+    
+    if task.status != "waiting_confirmation" or not task.pending_confirmation:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_STATE", "message": "Task is not waiting for deletion confirmation."})
+    
+    # Confirm and continue execution
+    from agent.executor import confirm_deletion
+    success = await confirm_deletion(task, emit_event)
+    save_task(task)
+    
+    if success:
+        # Resume task execution
+        task.current_step += 1
+        asyncio.create_task(resume_task(task))
+        
+        return {
+            "task_id": task_id,
+            "status": "executing",
+            "message": "Deletion confirmed, resuming task."
+        }
+    else:
+        return {
+            "task_id": task_id,
+            "status": "failed",
+            "message": "Deletion confirmation failed."
+        }
+
+@app.post("/api/tasks/{task_id}/reject-delete")
+async def reject_delete_endpoint(task_id: str, request: RejectRequest):
+    """Reject a pending file deletion."""
+    task = get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail={"code": "TASK_NOT_FOUND", "message": "Task not found."})
+    
+    if task.status != "waiting_confirmation" or not task.pending_confirmation:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_STATE", "message": "Task is not waiting for deletion confirmation."})
+    
+    task.pending_confirmation = None
+    task.status = "failed"
+    save_task(task)
+    
+    await emit_event("task_failed", task.task_id, {"summary": "File deletion was rejected by the user."})
+    
+    reason = request.reason or "File deletion was rejected by the user."
+    return {
+        "task_id": task_id,
+        "status": "failed",
+        "message": reason
+    }

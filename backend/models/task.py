@@ -9,6 +9,7 @@ class PlanStep(BaseModel):
     tool: str
     status: str = "pending"
     success_criteria: List[str] = Field(default_factory=list)
+    params: Dict[str, Any] = Field(default_factory=dict)  # For tool parameters
 
 class ApprovalPolicyInfo(BaseModel):
     result: str
@@ -48,6 +49,7 @@ class Task(BaseModel):
     plan: List[PlanStep] = Field(default_factory=list)
     actions: List[Action] = Field(default_factory=list)
     approval: Optional[Approval] = None
+    pending_confirmation: Optional[Dict[str, Any]] = None  # For delete confirmations
     result: Optional[Result] = None
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")

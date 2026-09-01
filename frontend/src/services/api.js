@@ -4,11 +4,11 @@ import axios from 'axios';
 const USE_MOCK = false;
 
 const getBaseUrl = () => {
-  return import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  return import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api';
 };
 
 const getEventSourceUrl = (taskId) => {
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  const baseUrl = getBaseUrl();
   return `${baseUrl}/tasks/${taskId}/events`;
 }
 
