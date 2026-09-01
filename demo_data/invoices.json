@@ -1,0 +1,9 @@
+[
+  {
+    "invoice_id": "INV-1042",
+    "vendor": "Acme Supplies",
+    "amount": 3800,
+    "currency": "INR",
+    "status": "pending"
+  }
+]
