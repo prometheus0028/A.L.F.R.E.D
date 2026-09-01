@@ -4,7 +4,7 @@ import axios from 'axios';
 const USE_MOCK = false;
 
 const getBaseUrl = () => {
-  return import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001/api';
+  return import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 };
 
 const getEventSourceUrl = (taskId) => {
@@ -18,26 +18,35 @@ const apiClient = axios.create({
 
 export const createTask = async (goal) => {
   if (USE_MOCK) return; // Placeholder
-  const { data } = await apiClient.post('/tasks', { goal });
-  return data;
+  const response = await apiClient.post('/tasks', { goal });
+  return response.data;
 };
 
 export const getTask = async (taskId) => {
-  if (USE_MOCK) return; // Placeholder
-  const { data } = await apiClient.get(`/tasks/${taskId}`);
-  return data;
+  const response = await apiClient.get(`/tasks/${taskId}`);
+  return response.data;
 };
 
 export const approveAction = async (taskId, approvalId) => {
-  if (USE_MOCK) return; // Placeholder
-  const { data } = await apiClient.post(`/tasks/${taskId}/approve`, { approval_id: approvalId });
-  return data;
+  const response = await apiClient.post(`/tasks/${taskId}/approve`, { approval_id: approvalId });
+  return response.data;
 };
 
-export const rejectAction = async (taskId, approvalId, reason) => {
-  if (USE_MOCK) return; // Placeholder
-  const { data } = await apiClient.post(`/tasks/${taskId}/reject`, { approval_id: approvalId, reason });
-  return data;
+export const rejectAction = async (taskId, approvalId, reason = null) => {
+  const response = await apiClient.post(`/tasks/${taskId}/reject`, { approval_id: approvalId, reason });
+  return response.data;
+};
+
+export const getFiles = async () => {
+  const response = await apiClient.get('/files');
+  return response.data;
+};
+
+export const uploadFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post('/files/upload', formData);
+  return response.data;
 };
 
 export const subscribeToTaskEvents = (taskId, callback) => {

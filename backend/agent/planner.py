@@ -29,7 +29,7 @@ def create_plan(goal: str) -> List[PlanStep]:
         return [
             PlanStep(id="step_1", description="Find tomorrow's meeting with Rahul", tool="calendar.search", success_criteria=["meeting_found"]),
             PlanStep(id="step_2", description="Find relevant emails", tool="email.search", success_criteria=["emails_found"]),
-            PlanStep(id="step_3", description="Find latest project document", tool="files.search", params={"query": "project report", "path": "demo_data"}, success_criteria=["document_found"]),
+            PlanStep(id="step_3", description="Find latest project document", tool="files.search", params={"query": "project report", "path": "."}, success_criteria=["document_found"]),
             PlanStep(id="step_4", description="Generate meeting briefing", tool="documents.create", success_criteria=["briefing_created"])
         ]
         

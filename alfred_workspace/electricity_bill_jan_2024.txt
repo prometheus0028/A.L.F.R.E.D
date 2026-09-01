@@ -1,0 +1,29 @@
+ELECTRICITY BILL
+Account Number: ACC-12345678
+Billing Period: January 1-31, 2024
+Billing Date: February 2, 2024
+
+==================================================
+
+USAGE SUMMARY
+Previous Reading: 45,234 kWh
+Current Reading: 45,892 kWh
+Consumption: 658 kWh
+
+==================================================
+
+CHARGES BREAKDOWN
+Generation Charges:     $89.50
+Distribution Charges:   $34.20
+Taxes & Levies:         $21.30
+
+==================================================
+
+TOTAL AMOUNT DUE: $145.00
+
+Payment Due Date: February 20, 2024
+
+==================================================
+
+Please pay the full amount by the due date to avoid late fees.
+For questions, contact: billing@powercompany.com
