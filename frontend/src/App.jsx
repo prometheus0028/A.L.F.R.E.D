@@ -1,27 +1,34 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Landing from './pages/Landing';
+import DashboardLayout from './components/DashboardLayout';
 import Workspace from './pages/Workspace';
+import Tasks from './pages/Tasks';
+import Approvals from './pages/Approvals';
+import Activity from './pages/Activity';
+import Knowledge from './pages/Knowledge';
+import Finance from './pages/Finance';
+import Settings from './pages/Settings';
 
 function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-surface-secondary">
-      <header className="bg-surface-primary border-b border-border h-14 flex items-center px-6">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-accent rounded text-white flex items-center justify-center font-bold text-sm">
-            A
-          </div>
-          <span className="font-semibold text-text-primary tracking-tight">ALFRED</span>
-        </div>
-        <div className="ml-auto flex items-center gap-4">
-          <span className="text-xs text-text-muted font-medium px-2 py-1 bg-surface-secondary rounded border border-border">
-            Agent Ready
-          </span>
-        </div>
-      </header>
-      
-      <main className="flex-1 overflow-auto">
-        <Workspace />
-      </main>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Workspace />} />
+          <Route path="tasks" element={<Tasks />} />
+          <Route path="approvals" element={<Approvals />} />
+          <Route path="activity" element={<Activity />} />
+          <Route path="knowledge" element={<Knowledge />} />
+          <Route path="finance" element={<Finance />} />
+          <Route path="settings" element={<Settings />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

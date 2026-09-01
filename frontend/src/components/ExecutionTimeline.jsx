@@ -1,46 +1,57 @@
 import React from 'react';
-import { Check, Loader2, RotateCw } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const ExecutionTimeline = ({ actions, status }) => {
   if (!actions || actions.length === 0) {
     if (status === 'created' || status === 'planning') {
-      return <div className="text-sm text-text-muted">Waiting to execute...</div>;
+      return <div className="text-[10px] font-mono tracking-widest uppercase text-text-muted">Waiting to execute...</div>;
     }
-    return <div className="text-sm text-text-muted">No execution history available.</div>;
+    return <div className="text-[10px] font-mono tracking-widest uppercase text-text-muted">No execution history available.</div>;
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 font-mono">
       {actions.map((action, index) => {
         const isRecovered = action.status === 'replanning';
         const isRunning = action.status === 'running';
         const isCompleted = action.status === 'completed';
+        const timeStr = action.timestamp ? new Date(action.timestamp).toLocaleTimeString([], { hour12: false }) : '00:00:00';
+
+        if (isRecovered) {
+          return (
+            <motion.div 
+              key={action.id || index}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="border-y border-border py-4 my-2 text-accent-amber"
+            >
+              <div className="text-xs tracking-widest uppercase mb-2">REPLAN / {String(index + 1).padStart(2, '0')}</div>
+              <div className="text-xs mb-2">{action.message || 'ADAPTING EXECUTION PATH...'}</div>
+              <div className="text-xs uppercase flex gap-2">
+                <span>&rarr;</span> {action.summary || action.operation || 'SEARCHING ALTERNATIVE SOURCES'}
+              </div>
+            </motion.div>
+          );
+        }
 
         return (
-          <div key={action.id || index} className="flex gap-3 relative">
-            {index !== actions.length - 1 && (
-              <div className="absolute left-2.5 top-6 bottom-[-16px] w-px bg-border" />
-            )}
-            <div className={`mt-0.5 flex items-center justify-center w-5 h-5 rounded-full z-10 ${
-              isCompleted ? 'bg-status-success/10 text-status-success' : 
-              isRunning ? 'bg-accent/10 text-accent' : 
-              isRecovered ? 'bg-status-warning/10 text-status-warning' : 
-              'bg-surface-tertiary text-text-muted'
-            }`}>
-              {isCompleted && <Check size={12} />}
-              {isRunning && <Loader2 size={12} className="animate-spin" />}
-              {isRecovered && <RotateCw size={12} />}
-              {!isCompleted && !isRunning && !isRecovered && <div className="w-1.5 h-1.5 bg-current rounded-full" />}
+          <motion.div 
+            key={action.id || index} 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex gap-4 text-xs"
+          >
+            <div className="text-text-muted w-20 shrink-0">[{timeStr}]</div>
+            <div className="flex flex-col gap-1">
+              <div className={`uppercase tracking-widest ${isRunning ? 'text-accent' : isCompleted ? 'text-text-secondary' : 'text-text-muted'}`}>
+                {action.operation || 'PROCESS'}
+                {isRunning && <span className="ml-2 animate-pulse">_</span>}
+              </div>
+              <div className="text-[10px] text-text-muted">
+                {action.summary || 'Executing action...'}
+              </div>
             </div>
-            <div className="flex flex-col pb-1">
-              <span className={`text-sm ${isRunning ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>
-                {action.summary || action.operation || 'Executing action...'}
-              </span>
-              {isRecovered && action.message && (
-                <span className="text-xs text-status-warning mt-1">{action.message}</span>
-              )}
-            </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>

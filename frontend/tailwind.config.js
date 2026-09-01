@@ -8,31 +8,37 @@ export default {
     extend: {
       colors: {
         surface: {
-          primary: '#ffffff',
-          secondary: '#f8fafc', // slate-50
-          tertiary: '#f1f5f9', // slate-100
+          primary: '#050706', 
+          secondary: '#080A09', 
+          tertiary: '#0B0D0C',
         },
         border: {
-          DEFAULT: '#e2e8f0', // slate-200
+          DEFAULT: '#1c2420',
+          subtle: '#111613',
         },
         text: {
-          primary: '#0f172a', // slate-900
-          secondary: '#475569', // slate-600
-          muted: '#94a3b8', // slate-400
+          primary: '#f3f4f1', // warm off-white / ivory
+          secondary: '#8a9490', // desaturated gray
+          muted: '#5a6460', // darker desaturated gray
         },
         accent: {
-          DEFAULT: '#0284c7', // sky-600
-          hover: '#0369a1', // sky-700
+          DEFAULT: '#65a30d', // muted terminal green
+          hover: '#4d7c0f',
+          amber: '#d97706', // warm beige / amber
         },
         status: {
-          success: '#16a34a', // green-600
-          warning: '#d97706', // amber-600
-          error: '#dc2626', // red-600
-          info: '#2563eb', // blue-600
+          success: '#65a30d',
+          warning: '#d97706',
+          error: '#b91c1c', // muted red
+          info: '#2563eb', // keeping a muted blue just in case
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        mono: ['Space Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      },
+      animation: {
+        'spin-slow': 'spin 8s linear infinite',
       }
     },
   },

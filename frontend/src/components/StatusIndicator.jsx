@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const StatusIndicator = ({ status }) => {
   const getStatusConfig = () => {
@@ -7,27 +8,30 @@ const StatusIndicator = ({ status }) => {
       case 'planning':
       case 'executing':
       case 'verifying':
-        return { color: 'text-accent', bg: 'bg-accent/10', label: 'Active' };
+      case 'running': // Added based on ui
+        return { color: 'bg-text-primary', blink: true };
       case 'waiting_approval':
       case 'replanning':
-        return { color: 'text-status-warning', bg: 'bg-status-warning/10', label: 'Action Needed' };
+        return { color: 'bg-accent-amber', blink: true };
       case 'completed':
-        return { color: 'text-status-success', bg: 'bg-status-success/10', label: 'Completed' };
+        return { color: 'bg-status-success', blink: false };
       case 'failed':
-        return { color: 'text-status-error', bg: 'bg-status-error/10', label: 'Failed' };
+        return { color: 'bg-status-error', blink: false };
       case 'paused':
-        return { color: 'text-text-muted', bg: 'bg-surface-tertiary', label: 'Paused' };
+        return { color: 'bg-text-muted', blink: false };
       default:
-        return { color: 'text-text-secondary', bg: 'bg-surface-secondary', label: status || 'Unknown' };
+        return { color: 'bg-text-secondary', blink: false };
     }
   };
 
   const config = getStatusConfig();
 
   return (
-    <span className={`px-2 py-1 text-xs font-medium uppercase rounded-sm ${config.color} ${config.bg}`}>
-      {config.label}
-    </span>
+    <motion.span 
+      className={`inline-block w-2.5 h-2.5 rounded-full ${config.color}`}
+      animate={config.blink ? { opacity: [1, 0.4, 1] } : {}}
+      transition={config.blink ? { duration: 1.5, repeat: Infinity, ease: "linear" } : {}}
+    />
   );
 };
 

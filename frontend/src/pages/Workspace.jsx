@@ -10,6 +10,7 @@ import { createTask } from '../services/api';
 
 const Workspace = () => {
   const [taskId, setTaskId] = useState(null);
+  const [activeTab, setActiveTab] = useState('OVERVIEW');
   const { taskState, loading, error, approve, reject } = useTaskEvents(taskId);
 
   const handleStartTask = async (goal) => {
@@ -24,43 +25,148 @@ const Workspace = () => {
   const isExecuting = taskState && !['completed', 'failed'].includes(taskState.status);
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <GoalInput onStartTask={handleStartTask} isExecuting={isExecuting} />
-      
-      {taskState && (
-        <div className="bg-surface-primary border border-border rounded-md shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-          <TaskHeader task={taskState} />
-          
-          <div className="flex flex-1 overflow-hidden">
-            <div className="w-1/3 border-r border-border p-6 bg-surface-secondary/30 overflow-y-auto">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">Plan</h3>
-              <PlanView plan={taskState.plan} />
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {!taskState && !taskId && (
+          <div className="flex-1 flex flex-col h-full overflow-y-auto">
+            <div className="h-16 flex items-center px-8 border-b border-border shrink-0">
+              <span className="font-mono text-xs tracking-widest text-text-secondary uppercase">DASHBOARD / 01</span>
             </div>
             
-            <div className="flex-1 p-6 overflow-y-auto bg-surface-primary">
-              <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">Execution</h3>
-              <ExecutionTimeline actions={taskState.actions} status={taskState.status} />
+            <div className="p-8 max-w-4xl w-full">
+              <h1 className="text-3xl font-bold tracking-tight mb-8 uppercase">GOOD MORNING.</h1>
+              <GoalInput onStartTask={handleStartTask} isExecuting={isExecuting} />
               
-              {taskState.status === 'waiting_approval' && taskState.approval && (
-                <ApprovalPanel 
-                  approval={taskState.approval} 
-                  onApprove={approve} 
-                  onReject={reject} 
-                />
-              )}
-
-              {taskState.status === 'completed' && taskState.result && (
-                <ResultPanel result={taskState.result} />
-              )}
+              <div className="mt-16">
+                <div className="text-xs font-mono tracking-widest text-text-secondary mb-4 uppercase">Recent Tasks</div>
+                <div className="space-y-4">
+                  {[
+                    { id: '01', title: 'PREPARE ME FOR TOMORROW\'S MEETING WITH RAHUL', status: 'COMPLETED', color: 'text-text-secondary' },
+                    { id: '02', title: 'HANDLE THE PENDING INVOICE IF WITHIN POLICY', status: 'AWAITING APPROVAL', color: 'text-accent-amber' },
+                    { id: '03', title: 'SUMMARIZE PROJECT UPDATES FROM LAST WEEK', status: 'RUNNING', color: 'text-text-primary' },
+                    { id: '04', title: 'FIND LATEST DESIGN FILES FOR LANDING PAGE', status: 'FAILED', color: 'text-status-error' }
+                  ].map(task => (
+                    <div key={task.id} className="flex justify-between items-start border-b border-border pb-4 last:border-0">
+                      <div className="flex gap-4">
+                        <span className="font-mono text-xs text-text-muted">{task.id}</span>
+                        <span className="font-mono text-sm text-text-primary uppercase">{task.title}</span>
+                      </div>
+                      <div className={`font-mono text-xs tracking-widest uppercase ${task.color}`}>{task.status}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {taskState && (
+          <div className="flex-1 flex flex-col h-full overflow-hidden bg-surface-primary">
+            <TaskHeader task={taskState} activeTab={activeTab} onTabChange={setActiveTab} />
+            
+            <div className="flex flex-1 overflow-hidden">
+              
+              {/* PLAN VIEW */}
+              {(activeTab === 'OVERVIEW' || activeTab === 'PLAN') && (
+                <div className={`border-r border-border p-6 overflow-y-auto ${activeTab === 'PLAN' ? 'flex-1' : 'w-80'}`}>
+                  <div className="text-xs font-mono tracking-widest text-text-secondary mb-6 uppercase">Plan</div>
+                  <PlanView plan={taskState.plan} />
+                </div>
+              )}
+              
+              {/* EXECUTION VIEW */}
+              {(activeTab === 'OVERVIEW' || activeTab === 'EXECUTION') && (
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <div className="text-xs font-mono tracking-widest text-text-secondary mb-6 uppercase">Execution</div>
+                  <ExecutionTimeline actions={taskState.actions} status={taskState.status} />
+                </div>
+              )}
+
+              {/* DETAILS & RESULTS VIEW */}
+              {(activeTab === 'OVERVIEW' || activeTab === 'DETAILS') && (
+                <div className={`p-6 overflow-y-auto space-y-6 ${activeTab === 'DETAILS' ? 'flex-1 border-l border-border' : 'w-80 border-l border-border'}`}>
+                  <div className="text-xs font-mono tracking-widest text-text-secondary mb-6 uppercase">Details</div>
+                  {taskState.status === 'waiting_approval' && taskState.approval && (
+                    <ApprovalPanel 
+                      approval={taskState.approval} 
+                      onApprove={approve} 
+                      onReject={reject} 
+                    />
+                  )}
+
+                  {taskState.status === 'completed' && taskState.result && (
+                    <ResultPanel result={taskState.result} />
+                  )}
+                  
+                  {!['waiting_approval', 'completed'].includes(taskState.status) && (
+                    <div className="text-text-muted font-mono text-xs uppercase">No result details available yet.</div>
+                  )}
+                </div>
+              )}
+
+              {/* FILES VIEW */}
+              {activeTab === 'FILES' && (
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <div className="text-xs font-mono tracking-widest text-text-secondary mb-6 uppercase">Generated Files</div>
+                  {taskState.status === 'completed' ? (
+                    <div className="border border-border p-8 bg-surface-secondary/20 max-w-2xl">
+                      <div className="font-mono text-sm text-text-primary mb-4 uppercase">meeting_brief.md</div>
+                      <div className="text-xs text-text-secondary mb-6">A markdown file containing the briefing document.</div>
+                      <button 
+                        onClick={() => alert("File creation API not integrated yet. This will download or open the file in the future.")}
+                        className="border border-border bg-surface-secondary text-text-primary hover:bg-border transition-colors px-6 py-2 font-mono text-xs tracking-widest uppercase"
+                      >
+                        &gt; DOWNLOAD FILE
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-text-muted font-mono text-xs uppercase">No files generated yet.</div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right Column (Only on dashboard) */}
       {!taskState && !taskId && (
-        <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-md text-text-muted bg-surface-primary/50">
-          Enter a goal above to start ALFRED.
-        </div>
+        <aside className="w-80 border-l border-border bg-surface-primary/95 flex flex-col h-full overflow-y-auto p-6 shrink-0">
+          <div className="mb-12">
+            <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">AGENT OVERVIEW</div>
+            
+            <div className="flex justify-center mb-6">
+              <div className="w-32 h-32 rounded-full border border-border flex items-center justify-center relative">
+                <div className="absolute inset-1 border border-border/50 rounded-full" />
+                <div className="absolute inset-2 border border-border/30 rounded-full" />
+                <span className="text-2xl font-mono text-text-primary">100%</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 font-mono text-xs">
+              <div className="flex justify-between border-b border-border/50 pb-1"><span className="text-text-muted uppercase">PLAN ENGINE</span> <span className="text-text-primary">OK</span></div>
+              <div className="flex justify-between border-b border-border/50 pb-1"><span className="text-text-muted uppercase">TOOL ADAPTERS</span> <span className="text-text-primary">OK</span></div>
+              <div className="flex justify-between border-b border-border/50 pb-1"><span className="text-text-muted uppercase">POLICY ENGINE</span> <span className="text-text-primary">OK</span></div>
+              <div className="flex justify-between border-b border-border/50 pb-1"><span className="text-text-muted uppercase">VERIFIER</span> <span className="text-text-primary">OK</span></div>
+              <div className="flex justify-between pb-1"><span className="text-text-muted uppercase">MEMORY</span> <span className="text-text-primary">OK</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">NEXT APPROVAL</div>
+            <div className="border border-border p-4">
+              <div className="text-xs font-mono text-text-secondary mb-1 uppercase">INVOICE PAYMENT</div>
+              <div className="text-sm text-text-primary mb-4 uppercase">ACME SUPPLIES</div>
+              <div className="text-lg font-mono text-text-primary text-right mb-4">₹3,800</div>
+              <div className="flex gap-2">
+                <button onClick={() => alert("Demo pending approval - view not hooked up.")} className="flex-1 py-1.5 border border-border text-[10px] font-mono tracking-widest bg-surface-secondary text-text-primary hover:bg-border transition-colors uppercase">&gt; REVIEW</button>
+                <button onClick={() => alert("Demo pending approval - action disabled.")} className="flex-1 py-1.5 border border-border text-[10px] font-mono tracking-widest text-text-secondary hover:bg-surface-secondary transition-colors uppercase">REJECT</button>
+              </div>
+            </div>
+          </div>
+        </aside>
       )}
     </div>
   );
