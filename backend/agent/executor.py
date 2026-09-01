@@ -33,7 +33,7 @@ async def execute_step(task: Task, step_index: int, emit_event: Callable) -> boo
             results = email.search()
             summary = f"Found {len(results)} relevant emails"
         elif tool_module == "files" and tool_operation == "search":
-            query = "Rahul project report" if step_index == 2 else "project status"
+            query = "Rahul project report" if step.id == "step_3" else "project_status"
             results = files.search(query)
             if not results:
                 success = False
@@ -99,6 +99,8 @@ async def execute_task(task: Task, emit_event: Callable):
                 return
         else:
             task.current_step += 1
+            
+        await asyncio.sleep(0.5)
             
     task.status = "verifying"
     await emit_event("verification_started", task.task_id, {})
