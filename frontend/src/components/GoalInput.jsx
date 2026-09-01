@@ -1,7 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
-const GoalInput = ({ onStartTask, isExecuting }) => {
+const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) => {
   const [goal, setGoal] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+      
+      mediaRecorder.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'audio.webm');
+        
+        try {
+          const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+          const response = await fetch(`${baseUrl}/api/speech/transcribe`, {
+            method: 'POST',
+            body: formData,
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text) {
+              setGoal(prev => (prev + " " + data.text).trim());
+            }
+          }
+        } catch (error) {
+          console.error("Transcription failed", error);
+        }
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.current.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Failed to access microphone", error);
+    }
+  };
+  
+  const handleStopRecording = () => {
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
+      setIsRecording(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -26,6 +79,24 @@ const GoalInput = ({ onStartTask, isExecuting }) => {
             disabled={isExecuting}
             className="flex-1 bg-transparent py-3 pr-4 text-text-primary text-sm focus:outline-none disabled:opacity-50"
           />
+          <button
+            type="button"
+            onMouseDown={handleStartRecording}
+            onMouseUp={handleStopRecording}
+            onMouseLeave={handleStopRecording}
+            className={`px-4 text-xl ${isRecording ? 'text-status-error' : 'text-text-muted hover:text-text-primary'} transition-colors`}
+            title="Hold to speak"
+          >
+            🎤
+          </button>
+          <button
+            type="button"
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            className={`px-4 text-xl ${audioEnabled ? 'text-accent-amber' : 'text-text-muted hover:text-text-primary'} border-l border-border transition-colors`}
+            title={audioEnabled ? "Disable Voice Output" : "Enable Voice Output"}
+          >
+            {audioEnabled ? "🔊" : "🔈"}
+          </button>
         </div>
         
         <button 

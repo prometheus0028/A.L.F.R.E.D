@@ -7,6 +7,12 @@ import asyncio
 from typing import Dict, Any, Optional
 import datetime
 from sse_starlette.sse import EventSourceResponse
+from fastapi import UploadFile, File
+from fastapi.responses import StreamingResponse
+import tempfile
+import os
+import wave
+import io
 
 from models.task import Task
 from storage.database import save_task, get_task
@@ -46,6 +52,51 @@ async def emit_event(event_type: str, task_id: str, data: dict):
     }
     if task_id in task_event_queues:
         await task_event_queues[task_id].put(event)
+
+whisper_model = None
+piper_voice = None
+
+@app.post("/api/speech/transcribe")
+async def transcribe_speech(audio: UploadFile = File(...)):
+    global whisper_model
+    if whisper_model is None:
+        from faster_whisper import WhisperModel
+        whisper_model = WhisperModel("tiny.en", device="cpu", compute_type="int8")
+        
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        tmp.write(await audio.read())
+        tmp_path = tmp.name
+        
+    try:
+        segments, info = whisper_model.transcribe(tmp_path, beam_size=1)
+        text = " ".join([segment.text for segment in segments])
+        return {"text": text.strip()}
+    finally:
+        os.unlink(tmp_path)
+
+class SynthesizeRequest(BaseModel):
+    text: str
+
+@app.post("/api/speech/synthesize")
+async def synthesize_speech(request: SynthesizeRequest):
+    global piper_voice
+    if piper_voice is None:
+        from piper import PiperVoice
+        model_path = os.path.join(os.path.dirname(__file__), "models", "en_US-lessac-low.onnx")
+        config_path = os.path.join(os.path.dirname(__file__), "models", "en_US-lessac-low.onnx.json")
+        piper_voice = PiperVoice.load(model_path, config_path)
+        
+    import wave
+    import io
+    wav_io = io.BytesIO()
+    with wave.open(wav_io, "wb") as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)
+        wav_file.setframerate(piper_voice.config.sample_rate)
+        piper_voice.synthesize_wav(request.text, wav_file)
+        
+    wav_io.seek(0)
+    return StreamingResponse(wav_io, media_type="audio/wav")
 
 @app.post("/api/tasks", status_code=201)
 async def create_task_endpoint(request: GoalRequest):

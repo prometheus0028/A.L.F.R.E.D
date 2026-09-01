@@ -1,10 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { subscribeToTaskEvents, getTask, approveAction, rejectAction } from '../services/api';
+import AudioEngine from '../services/AudioEngine';
 
-export const useTaskEvents = (taskId) => {
+export const useTaskEvents = (taskId, audioEnabled) => {
   const [taskState, setTaskState] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Track processed final events to avoid duplicate TTS triggers per task
+  const processedFinalEvents = useRef(new Set());
+  const audioEnabledRef = useRef(audioEnabled);
+
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
 
   const refreshTask = useCallback(async () => {
     if (!taskId) return;
@@ -26,7 +35,32 @@ export const useTaskEvents = (taskId) => {
 
     const unsubscribe = subscribeToTaskEvents(taskId, (event) => {
       // Event received, optimistic state updates or full refresh
-      console.log("Event received:", event);
+      console.log(`[SSE] Received event type: ${event.type}`);
+      
+      if (audioEnabledRef.current) {
+        if (event.type === 'plan_created') {
+          AudioEngine.playSynthesis("Plan generated.");
+        } else if (event.type === 'approval_required') {
+          AudioEngine.playSynthesis("Approval required.");
+        } else if (event.type === 'task_completed') {
+          const eventId = `${taskId}-completed`;
+          if (!processedFinalEvents.current.has(eventId)) {
+            processedFinalEvents.current.add(eventId);
+            console.log(`[SSE] Event recognized as final result: ${event.type}`);
+            const summary = event.data?.summary || "Task completed.";
+            AudioEngine.playSynthesis(summary);
+          }
+        } else if (event.type === 'task_failed') {
+          const eventId = `${taskId}-failed`;
+          if (!processedFinalEvents.current.has(eventId)) {
+            processedFinalEvents.current.add(eventId);
+            console.log(`[SSE] Event recognized as final result: ${event.type}`);
+            const summary = event.data?.summary ? `Task failed: ${event.data.summary}` : "Task failed.";
+            AudioEngine.playSynthesis(summary);
+          }
+        }
+      }
+
       if (['plan_created', 'replanning', 'task_completed', 'task_failed', 'approval_required'].includes(event.type)) {
         refreshTask();
       } else {
