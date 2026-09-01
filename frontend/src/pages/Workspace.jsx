@@ -11,7 +11,8 @@ import { createTask } from '../services/api';
 const Workspace = () => {
   const [taskId, setTaskId] = useState(null);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
-  const { taskState, loading, error, approve, reject } = useTaskEvents(taskId);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const { taskState, loading, error, approve, reject } = useTaskEvents(taskId, audioEnabled);
 
   const handleStartTask = async (goal) => {
     try {
@@ -36,7 +37,7 @@ const Workspace = () => {
             
             <div className="p-8 max-w-4xl w-full">
               <h1 className="text-3xl font-bold tracking-tight mb-8 uppercase">GOOD MORNING.</h1>
-              <GoalInput onStartTask={handleStartTask} isExecuting={isExecuting} />
+              <GoalInput onStartTask={handleStartTask} isExecuting={isExecuting} audioEnabled={audioEnabled} setAudioEnabled={setAudioEnabled} />
               
               <div className="mt-16">
                 <div className="text-xs font-mono tracking-widest text-text-secondary mb-4 uppercase">Recent Tasks</div>
