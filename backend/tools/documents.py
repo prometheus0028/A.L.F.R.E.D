@@ -1,11 +1,14 @@
-from .files import create as create_file
+from .files import write as write_file
 from typing import Dict, Any
 
 def create(title: str, content: str, filename: str) -> Dict[str, Any]:
     full_content = f"# {title}\n\n{content}"
-    result = create_file(filename, full_content)
+    result = write_file(filename, full_content)
+    # Ensure we include the verified flag that the executor expects
     return {
-        "status": "success",
+        "status": result.get("status", "success"),
         "file_name": filename,
-        "title": title
+        "title": title,
+        "verified": result.get("verified", False),
+        "error": result.get("error")
     }

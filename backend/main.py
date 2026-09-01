@@ -98,6 +98,59 @@ async def synthesize_speech(request: SynthesizeRequest):
     wav_io.seek(0)
     return StreamingResponse(wav_io, media_type="audio/wav")
 
+@app.post("/api/files/upload")
+async def upload_file_endpoint(file: UploadFile = File(...)):
+    from tools.files import write as write_file
+    try:
+        content = await file.read()
+        
+        # Files write takes a string, but the content is bytes
+        # We need to decode it for write, or use append which takes str but encodes to bytes
+        # Wait, the tools.files.write function does: f.write(content) with encoding="utf-8"
+        # So we should decode to string if it's text, but for binary files (PDF) it will fail.
+        # Looking at tools.files, append uses binary write: f.write(content.encode("utf-8")) if it's str
+        # Actually let's just write it manually using ALFRED_WORKSPACE_ROOT to be 100% binary safe
+        from tools.files import _normalize_path
+        
+        # This resolves and validates the path is inside workspace
+        file_path = _normalize_path(file.filename)
+        
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, "wb") as f:
+            f.write(content)
+            
+        return {
+            "success": True,
+            "file": {
+                "name": file.filename,
+                "path": file.filename,
+                "size": len(content),
+                "type": file.content_type
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail={"error": str(e)})
+
+@app.get("/api/files")
+async def list_files_endpoint():
+    from tools.files import list as list_files
+    result = list_files(".")
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result)
+    return result
+
+@app.get("/api/files/{filename:path}")
+async def get_file_endpoint(filename: str):
+    from tools.files import _normalize_path
+    from fastapi.responses import FileResponse
+    try:
+        file_path = _normalize_path(filename)
+        if not file_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+        return FileResponse(file_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.post("/api/tasks", status_code=201)
 async def create_task_endpoint(request: GoalRequest):
     if not request.goal or not request.goal.strip():

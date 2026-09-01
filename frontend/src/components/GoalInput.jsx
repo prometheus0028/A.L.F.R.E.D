@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
+import { useUpload } from '../hooks/useUpload';
 
 const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) => {
   const [goal, setGoal] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
+  const { isUploading, uploadStatus, fileInputRef, triggerUpload, handleFileChange } = useUpload();
 
   const handleStartRecording = async () => {
     try {
@@ -97,6 +99,21 @@ const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) 
           >
             {audioEnabled ? "🔊" : "🔈"}
           </button>
+          <button
+            type="button"
+            onClick={triggerUpload}
+            disabled={isUploading}
+            className={`px-4 text-xl font-mono border-l border-border transition-colors ${isUploading ? 'text-accent-amber opacity-50' : 'text-text-muted hover:text-text-primary'}`}
+            title="Upload File"
+          >
+            +
+          </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+          />
         </div>
         
         <button 
@@ -107,6 +124,14 @@ const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) 
           &gt; RUN
         </button>
       </form>
+
+      {uploadStatus.status !== 'IDLE' && (
+        <div className={`mt-2 font-mono text-[10px] tracking-widest uppercase ${
+          uploadStatus.status === 'ERROR' ? 'text-status-error' : 'text-accent-amber'
+        }`}>
+          &gt; {uploadStatus.message} {uploadStatus.file ? `- ${uploadStatus.file}` : ''}
+        </div>
+      )}
       
       <div className="mt-8">
         <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">Try these:</div>
