@@ -6,13 +6,20 @@ import ExecutionTimeline from '../components/ExecutionTimeline';
 import ApprovalPanel from '../components/ApprovalPanel';
 import ResultPanel from '../components/ResultPanel';
 import { useTaskEvents } from '../hooks/taskEvents';
-import { createTask } from '../services/api';
+import { createTask, getAllTasks } from '../services/api';
 
 const Workspace = () => {
+  const [tasks, setTasks] = useState([]);
   const [taskId, setTaskId] = useState(null);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
   const [audioEnabled, setAudioEnabled] = useState(false);
   const { taskState, loading, error, approve, reject } = useTaskEvents(taskId, audioEnabled);
+
+  React.useEffect(() => {
+    if (!taskId) {
+      getAllTasks().then(setTasks).catch(console.error);
+    }
+  }, [taskId]);
 
   const handleStartTask = async (goal) => {
     try {
@@ -42,20 +49,17 @@ const Workspace = () => {
               <div className="mt-16">
                 <div className="text-xs font-mono tracking-widest text-text-secondary mb-4 uppercase">Recent Tasks</div>
                 <div className="space-y-4">
-                  {[
-                    { id: '01', title: 'PREPARE ME FOR TOMORROW\'S MEETING WITH RAHUL', status: 'COMPLETED', color: 'text-text-secondary' },
-                    { id: '02', title: 'HANDLE THE PENDING INVOICE IF WITHIN POLICY', status: 'AWAITING APPROVAL', color: 'text-accent-amber' },
-                    { id: '03', title: 'SUMMARIZE PROJECT UPDATES FROM LAST WEEK', status: 'RUNNING', color: 'text-text-primary' },
-                    { id: '04', title: 'FIND LATEST DESIGN FILES FOR LANDING PAGE', status: 'FAILED', color: 'text-status-error' }
-                  ].map(task => (
-                    <div key={task.id} className="flex justify-between items-start border-b border-border pb-4 last:border-0">
+                  {tasks.length > 0 ? tasks.slice(0, 10).map(task => (
+                    <div key={task.task_id} className="flex justify-between items-start border-b border-border pb-4 last:border-0 cursor-pointer hover:bg-surface-secondary/20 transition-colors p-2" onClick={() => setTaskId(task.task_id)}>
                       <div className="flex gap-4">
-                        <span className="font-mono text-xs text-text-muted">{task.id}</span>
-                        <span className="font-mono text-sm text-text-primary uppercase">{task.title}</span>
+                        <span className="font-mono text-xs text-text-muted">{task.task_id.substring(0, 8)}</span>
+                        <span className="font-mono text-sm text-text-primary uppercase">{task.goal}</span>
                       </div>
-                      <div className={`font-mono text-xs tracking-widest uppercase ${task.color}`}>{task.status}</div>
+                      <div className="font-mono text-xs tracking-widest uppercase text-text-secondary">{task.status}</div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-sm font-mono text-text-muted uppercase">No recent tasks.</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -158,13 +162,7 @@ const Workspace = () => {
           <div>
             <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">NEXT APPROVAL</div>
             <div className="border border-border p-4">
-              <div className="text-xs font-mono text-text-secondary mb-1 uppercase">INVOICE PAYMENT</div>
-              <div className="text-sm text-text-primary mb-4 uppercase">ACME SUPPLIES</div>
-              <div className="text-lg font-mono text-text-primary text-right mb-4">₹3,800</div>
-              <div className="flex gap-2">
-                <button onClick={() => alert("Demo pending approval - view not hooked up.")} className="flex-1 py-1.5 border border-border text-[10px] font-mono tracking-widest bg-surface-secondary text-text-primary hover:bg-border transition-colors uppercase">&gt; REVIEW</button>
-                <button onClick={() => alert("Demo pending approval - action disabled.")} className="flex-1 py-1.5 border border-border text-[10px] font-mono tracking-widest text-text-secondary hover:bg-surface-secondary transition-colors uppercase">REJECT</button>
-              </div>
+              <div className="text-xs font-mono text-text-secondary mb-1 uppercase">No pending approvals</div>
             </div>
           </div>
         </aside>

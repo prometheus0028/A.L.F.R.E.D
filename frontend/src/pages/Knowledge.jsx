@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getFiles } from '../services/api';
+import { getFiles, deleteFile } from '../services/api';
 import { useUpload } from '../hooks/useUpload';
 
 const Knowledge = () => {
@@ -20,6 +20,17 @@ const Knowledge = () => {
       console.error("Failed to fetch files", error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleDelete = async (filename, e) => {
+    e.stopPropagation();
+    try {
+      await deleteFile(filename);
+      fetchFiles();
+    } catch (error) {
+      console.error("Failed to delete file", error);
+      alert("Failed to delete file.");
     }
   };
 
@@ -76,9 +87,16 @@ const Knowledge = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {files.map((doc, idx) => (
-              <div key={idx} className="border border-border p-4 hover:border-text-muted transition-colors cursor-pointer group bg-surface-secondary/20">
+              <div key={idx} className="border border-border p-4 hover:border-text-muted transition-colors cursor-pointer group bg-surface-secondary/20 relative">
+                <button
+                  onClick={(e) => handleDelete(doc.name, e)}
+                  className="absolute top-2 right-2 text-text-muted hover:text-status-error font-mono px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove File"
+                >
+                  X
+                </button>
                 <div className="font-mono text-[10px] tracking-widest text-text-muted mb-2 uppercase">{doc.type || 'DOCUMENT'}</div>
-              <div className="font-mono text-sm text-text-primary mb-4 truncate group-hover:text-accent transition-colors" title={doc.name}>{doc.name}</div>
+              <div className="font-mono text-sm text-text-primary mb-4 truncate group-hover:text-accent transition-colors pr-6" title={doc.name}>{doc.name}</div>
               <div className="flex justify-between items-center">
                 <span className="font-mono text-xs text-text-secondary">{formatSize(doc.size)}</span>
                 <span 

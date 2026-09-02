@@ -3,14 +3,22 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import WiregridBackground from '../components/WiregridBackground';
 import InteractiveNodeTree from '../components/InteractiveNodeTree';
+import { useAuth } from '../hooks/useAuth';
 
+// We'll create a reusable ProfileMenu component to place in the header
+import ProfileMenu from '../components/ProfileMenu';
 const Landing = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const loginUrl = `${baseUrl}/auth/google/login`;
+
   return (
     <div className="min-h-screen bg-transparent text-text-primary overflow-hidden relative flex flex-col font-sans">
       <WiregridBackground intensity="high" />
 
       {/* Top Navigation */}
-      <header className="relative z-10 border-b border-border h-16 flex items-center px-8 justify-between bg-surface-primary/80">
+      <header className="relative z-50 border-b border-border h-16 flex items-center px-8 justify-between bg-surface-primary/80">
         <div className="font-mono text-lg font-bold tracking-widest text-text-primary">
           ALFRED_
         </div>
@@ -23,12 +31,18 @@ const Landing = () => {
           <a href="#" className="hover:text-text-primary transition-colors">DOCS</a>
         </nav>
 
-        <Link 
-          to="/dashboard"
-          className="border border-border px-6 py-3 text-xs font-mono tracking-widest hover:bg-text-primary hover:text-surface-primary transition-colors"
-        >
-          LAUNCH ALFRED_
-        </Link>
+        {!isLoading && (
+          isAuthenticated ? (
+            <ProfileMenu />
+          ) : (
+            <a 
+              href={loginUrl}
+              className="border border-border px-6 py-3 text-xs font-mono tracking-widest hover:bg-text-primary hover:text-surface-primary transition-colors flex items-center gap-2"
+            >
+              LOGIN WITH GOOGLE
+            </a>
+          )
+        )}
       </header>
 
       {/* Main Content */}
@@ -68,12 +82,23 @@ const Landing = () => {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="flex items-center gap-4 pt-4"
           >
-            <Link 
-              to="/dashboard"
-              className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none"
-            >
-              LAUNCH ALFRED_ <span className="opacity-50">→</span>
-            </Link>
+            {!isLoading && (
+              isAuthenticated ? (
+                <Link 
+                  to="/dashboard"
+                  className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none"
+                >
+                  LAUNCH ALFRED_ <span className="opacity-50">→</span>
+                </Link>
+              ) : (
+                <a 
+                  href={loginUrl}
+                  className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none"
+                >
+                  LAUNCH ALFRED_ <span className="opacity-50">→</span>
+                </a>
+              )
+            )}
             <a 
               href="#how-it-works"
               onClick={(e) => { 
@@ -141,12 +166,23 @@ const Landing = () => {
                 ALFRED ensures you maintain oversight while it handles the execution.
               </p>
             </div>
-            <Link 
-              to="/dashboard"
-              className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none shrink-0"
-            >
-              GIVE ALFRED A GOAL <span className="opacity-50">→</span>
-            </Link>
+            {!isLoading && (
+              isAuthenticated ? (
+                <Link 
+                  to="/dashboard"
+                  className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none shrink-0"
+                >
+                  GIVE ALFRED A GOAL <span className="opacity-50">→</span>
+                </Link>
+              ) : (
+                <a 
+                  href={loginUrl}
+                  className="bg-accent text-surface-primary px-8 py-4 text-sm font-mono tracking-widest hover:bg-accent-hover transition-colors inline-flex items-center gap-2 leading-none shrink-0"
+                >
+                  GIVE ALFRED A GOAL <span className="opacity-50">→</span>
+                </a>
+              )
+            )}
           </div>
         </div>
       </section>

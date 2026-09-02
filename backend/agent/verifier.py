@@ -1,76 +1,78 @@
+import json
 from typing import Dict, Any, Optional
 from models.task import Task, Result
+from agent.llm import openai_client
 
-def verify_task(task: Task) -> Optional[Result]:
-    """Verify task completion based on goal type and collected evidence."""
-    goal_lower = task.goal.lower()
-    
-    if "meeting" in goal_lower and "rahul" in goal_lower:
-        return Result(
-            type="meeting_brief",
-            status="verified",
-            title="Meeting briefing created",
-            file_name="meeting_brief.md",
-            summary="Meeting briefing created and verified.",
-            evidence=["1 calendar event", "4 emails", "2 documents"]
-        )
-    
-    if "invoice" in goal_lower or "policy" in goal_lower:
-        tx_hash = "0xDEMO..."
-        for action in task.actions:
-            if action.operation == "submit_transaction" and getattr(action, "summary", ""):
-                tx_hash = action.summary
-        return Result(
-            type="payment",
-            status="verified",
-            title="Payment complete",
-            vendor="Acme Supplies",
-            amount=3800,
-            currency="INR",
-            transaction_hash=tx_hash,
-            summary="Transaction confirmed on blockchain.",
-            evidence=["Policy passed", "User approved", "Transaction confirmed"]
-        )
-    
-    # File-based goal verification (electricity bill, receipt, documents, etc.)
-    if any(keyword in goal_lower for keyword in ["bill", "receipt", "invoice", "document", "found", "email", "file"]):
-        # Look for extracted amount in analyze action
-        extracted_amount = None
-        searched_file = None
-        evidence = []
+async def verify_task(task: Task) -> Optional[Result]:
+    # Check if any action failed
+    failed_actions = [a for a in task.actions if a.status == "failed"]
+    if failed_actions:
+        return None # Task fails if there are unrecovered failed actions
         
-        for action in task.actions:
-            if action.operation == "search" and action.tool_result:
-                # Count found files
-                results = action.tool_result.get("results", [])
-                if results:
-                    searched_file = results[0].get("filename", "")
-                    evidence.append(f"Found {action.tool_result.get('count', 0)} files")
+    # Aggregate summaries from all completed actions
+    summaries = []
+    for i, action in enumerate(task.actions):
+        if action.status == "completed":
+            summaries.append(f"Step {i+1} ({action.tool}): {action.summary}")
             
-            elif action.operation == "read" and action.tool_result:
-                evidence.append(f"Read file ({action.tool_result.get('size', 0)} bytes)")
-            
-            elif action.operation == "analyze" and action.tool_result:
-                extracted = action.tool_result.get("extracted", {})
-                if "amount" in extracted:
-                    extracted_amount = extracted["amount"]
-                    evidence.append(f"Extracted amount: ${extracted_amount}")
-                if "date" in extracted:
-                    evidence.append(f"Date: {extracted['date']}")
+    final_summary_log = "\n".join(summaries)
+    if not final_summary_log:
+        return Result(
+            type="generic",
+            status="verified",
+            title="Task Completed",
+            summary="Task completed successfully with no output.",
+            evidence=["0 tools executed"]
+        )
         
-        # Task succeeds if we found and extracted information
-        if extracted_amount is not None:
-            return Result(
-                type="file_info_extracted",
-                status="verified",
-                title=f"Found and extracted from {searched_file or 'file'}",
-                summary=f"Successfully located and extracted amount: ${extracted_amount}",
-                amount=extracted_amount,
-                file_name=searched_file,
-                evidence=evidence
-            )
-        
-        # If we searched and found files but didn't extract amount, still partial success
-        # Do not return a successful result when the requested amount is absent.
+    system_prompt = """
+    You are ALFRED, an advanced AI assistant. Your task is to summarize the results of your execution.
+    The user asked you to achieve a GOAL. You executed several tools.
+    Here is the log of your executed steps:
+    {log}
     
-    return None
+    Write a concise, natural, and helpful response to the user summarizing what you accomplished.
+    If you found information (like 5 emails), state it directly (e.g., "Yes, you received 5 new mails").
+    If you created a file or modified a file, mention it clearly.
+    
+    Output JSON format ONLY:
+    {{
+      "summary": "Your conversational response here",
+      "file_name": "filename if a file was created or edited, otherwise null"
+    }}
+    """
+    
+    prompt = system_prompt.format(log=final_summary_log)
+    
+    try:
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"GOAL: {task.goal}"}
+            ],
+            response_format={ "type": "json_object" },
+            temperature=0.0
+        )
+        
+        result_json = json.loads(response.choices[0].message.content)
+        final_summary = result_json.get("summary", "Task completed.")
+        file_name = result_json.get("file_name")
+        
+        return Result(
+            type="generic",
+            status="verified",
+            title="Task Completed",
+            summary=final_summary,
+            file_name=file_name,
+            evidence=[f"{len(task.actions)} tools executed"]
+        )
+    except Exception as e:
+        print(f"Verifier LLM failed: {e}")
+        return Result(
+            type="generic",
+            status="verified",
+            title="Task Completed",
+            summary="Task completed, but could not generate a conversational summary.",
+            evidence=[f"{len(task.actions)} tools executed"]
+        )
