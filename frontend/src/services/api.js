@@ -4,7 +4,7 @@ import axios from 'axios';
 const USE_MOCK = false;
 
 const getBaseUrl = () => {
-  return import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 };
 
 const getEventSourceUrl = (taskId) => {
@@ -13,12 +13,18 @@ const getEventSourceUrl = (taskId) => {
 }
 
 const apiClient = axios.create({
-  baseURL: getBaseUrl()
+  baseURL: getBaseUrl(),
+  withCredentials: true
 });
 
 export const createTask = async (goal) => {
   if (USE_MOCK) return; // Placeholder
   const response = await apiClient.post('/tasks', { goal });
+  return response.data;
+};
+
+export const getAllTasks = async () => {
+  const response = await apiClient.get('/tasks');
   return response.data;
 };
 
@@ -38,8 +44,23 @@ export const rejectAction = async (taskId, approvalId, reason = null) => {
 };
 
 export const getFiles = async () => {
-  const response = await apiClient.get('/files');
-  return response.data;
+  try {
+    const response = await apiClient.get('/files');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get files:', error);
+    throw error;
+  }
+};
+
+export const deleteFile = async (filename) => {
+  try {
+    const response = await apiClient.delete(`/files/${encodeURIComponent(filename)}`);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to delete file:', error);
+    throw error;
+  }
 };
 
 export const uploadFile = async (file) => {
@@ -52,7 +73,9 @@ export const uploadFile = async (file) => {
 export const subscribeToTaskEvents = (taskId, callback) => {
   if (USE_MOCK) return; // Placeholder
   
-  const eventSource = new EventSource(getEventSourceUrl(taskId));
+  const eventSource = new EventSource(getEventSourceUrl(taskId), {
+    withCredentials: true
+  });
   
   const eventTypes = [
     "goal_received", "plan_created", "step_started", 

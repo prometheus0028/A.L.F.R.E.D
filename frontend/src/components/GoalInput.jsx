@@ -1,12 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { useUpload } from '../hooks/useUpload';
+import { deleteFile } from '../services/api';
 
 const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) => {
   const [goal, setGoal] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorder = useRef(null);
   const audioChunks = useRef([]);
-  const { isUploading, uploadStatus, fileInputRef, triggerUpload, handleFileChange } = useUpload();
+  const { isUploading, uploadStatus, fileInputRef, triggerUpload, handleFileChange } = useUpload((newFile) => {
+    setAttachedFiles(prev => [...prev, newFile]);
+  });
 
   const handleStartRecording = async () => {
     try {
@@ -58,17 +62,44 @@ const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) 
     }
   };
 
+  const handleRemoveFile = async (fileToRemove) => {
+    try {
+      await deleteFile(fileToRemove.name);
+      setAttachedFiles(prev => prev.filter(f => f.name !== fileToRemove.name));
+    } catch (error) {
+      console.error("Failed to remove file", error);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (goal.trim() && !isExecuting) {
-      onStartTask(goal);
+      let finalGoal = goal;
+      if (attachedFiles.length > 0) {
+        const fileNames = attachedFiles.map(f => f.name).join(', ');
+        finalGoal = `${goal}\n\nAttached sources: ${fileNames}`;
+      }
+      onStartTask(finalGoal);
       setGoal("");
+      setAttachedFiles([]);
     }
   };
 
   return (
     <div>
-      <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">What should ALFRED accomplish today?</div>
+      <div className="flex justify-between items-end mb-4">
+        <div className="text-[10px] font-mono tracking-widest text-text-muted uppercase">What should ALFRED accomplish today?</div>
+        {attachedFiles.length > 0 && (
+          <div className="flex gap-2">
+            {attachedFiles.map((f, i) => (
+              <span key={i} className="flex items-center gap-2 bg-surface-secondary border border-border px-2 py-1 font-mono text-[10px] tracking-widest text-text-primary uppercase">
+                {f.name}
+                <button type="button" onClick={() => handleRemoveFile(f)} className="text-text-muted hover:text-status-error ml-1">X</button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit} className="flex gap-4 items-stretch max-w-3xl">
         <div className="flex-1 flex items-center border border-border bg-surface-secondary relative font-mono">
@@ -77,7 +108,7 @@ const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) 
             type="text"
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
-            placeholder="e.g. Prepare me for tomorrow's meeting with Rahul"
+            placeholder="e.g. Prepare me for tomorrow's meeting with the client"
             disabled={isExecuting}
             className="flex-1 bg-transparent py-3 pr-4 text-text-primary text-sm focus:outline-none disabled:opacity-50"
           />
@@ -136,7 +167,7 @@ const GoalInput = ({ onStartTask, isExecuting, audioEnabled, setAudioEnabled }) 
       <div className="mt-8">
         <div className="text-[10px] font-mono tracking-widest text-text-muted mb-4 uppercase">Try these:</div>
         <div className="flex gap-4">
-          <button onClick={() => setGoal("Prepare me for tomorrow's meeting with Rahul")} className="px-4 py-1.5 border border-border text-xs font-mono tracking-widest text-text-secondary hover:text-text-primary hover:border-text-secondary transition-colors">
+          <button onClick={() => setGoal("Prepare me for tomorrow's meeting with the client")} className="px-4 py-1.5 border border-border text-xs font-mono tracking-widest text-text-secondary hover:text-text-primary hover:border-text-secondary transition-colors">
             PREPARE MEETING
           </button>
           <button onClick={() => setGoal("Handle the pending invoice")} className="px-4 py-1.5 border border-border text-xs font-mono tracking-widest text-text-secondary hover:text-text-primary hover:border-text-secondary transition-colors">

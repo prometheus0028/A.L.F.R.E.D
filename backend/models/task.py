@@ -7,6 +7,7 @@ class PlanStep(BaseModel):
     id: str
     description: str
     tool: str
+    tool_arguments: Dict[str, Any] = Field(default_factory=dict)
     status: str = "pending"
     success_criteria: List[str] = Field(default_factory=list)
     params: Dict[str, Any] = Field(default_factory=dict)  # For tool parameters
@@ -42,6 +43,7 @@ class Result(BaseModel):
 
 class Task(BaseModel):
     task_id: str
+    user_id: Optional[str] = None
     goal: str
     status: str = "created"
     current_step: int = 0

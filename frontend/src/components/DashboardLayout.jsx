@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import WiregridBackground from './WiregridBackground';
+import ProfileMenu from './ProfileMenu';
 
 const DashboardLayout = () => {
   const location = useLocation();
@@ -26,7 +27,7 @@ const DashboardLayout = () => {
         <nav className="flex-1 py-6 px-4 space-y-1 font-mono text-sm tracking-wide">
           <Link to="/dashboard" className={getNavClass('/dashboard')}> &gt; DASHBOARD</Link>
           <Link to="/dashboard/tasks" className={getNavClass('/dashboard/tasks')}> &gt; TASKS</Link>
-          <Link to="/dashboard/approvals" className={getNavClass('/dashboard/approvals')}> &gt; APPROVALS <span className="ml-2 px-1.5 py-0.5 bg-surface-secondary border border-border text-[10px]">2</span></Link>
+          <Link to="/dashboard/approvals" className={getNavClass('/dashboard/approvals')}> &gt; APPROVALS </Link>
           <Link to="/dashboard/activity" className={getNavClass('/dashboard/activity')}> &gt; ACTIVITY</Link>
           <Link to="/dashboard/knowledge" className={getNavClass('/dashboard/knowledge')}> &gt; KNOWLEDGE</Link>
           <Link to="/dashboard/finance" className={getNavClass('/dashboard/finance')}> &gt; FINANCE</Link>
@@ -45,7 +46,12 @@ const DashboardLayout = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden bg-transparent">
-        <Outlet />
+        <header className="h-16 border-b border-border flex items-center justify-end px-8 bg-surface-primary/80">
+          <ProfileMenu />
+        </header>
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

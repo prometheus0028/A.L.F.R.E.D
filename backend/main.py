@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 import uuid
 import asyncio
@@ -13,7 +14,12 @@ import tempfile
 import os
 import wave
 import io
+from dotenv import load_dotenv
 
+dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+load_dotenv(dotenv_path)
+
+from auth.google import router as google_router
 from models.task import Task
 from storage.database import save_task, get_task
 from agent.planner import create_plan
@@ -21,10 +27,16 @@ from agent.executor import execute_task
 from blockchain.adapter import submit_transaction
 
 app = FastAPI(title="ALFRED Backend")
-
+app.include_router(google_router)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "super-secret"),
+    same_site="lax",
+    https_only=False,
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -151,16 +163,32 @@ async def get_file_endpoint(filename: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.delete("/api/files/{filename:path}")
+async def delete_file_endpoint(filename: str):
+    from tools.files import delete_confirmed
+    try:
+        result = delete_confirmed(filename)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {"success": True, "message": "File deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.post("/api/tasks", status_code=201)
-async def create_task_endpoint(request: GoalRequest):
-    if not request.goal or not request.goal.strip():
+async def create_task_endpoint(request: Request, body: GoalRequest):
+    user = request.session.get("google_user")
+    if not user:
+        raise HTTPException(status_code=401, detail={"code": "UNAUTHORIZED", "message": "You must be logged in to create a task."})
+
+    if not body.goal or not body.goal.strip():
         raise HTTPException(status_code=400, detail={"code": "INVALID_GOAL", "message": "A non-empty goal is required."})
         
     task_id = f"task_{uuid.uuid4().hex[:8]}"
     
     task = Task(
         task_id=task_id,
-        goal=request.goal,
+        user_id=user["sub"],
+        goal=body.goal,
         status="created"
     )
     save_task(task)
@@ -174,8 +202,19 @@ async def create_task_endpoint(request: GoalRequest):
     return {
         "task_id": task_id,
         "status": "created",
-        "goal": request.goal
+        "goal": body.goal
     }
+
+@app.get("/api/tasks")
+async def get_all_tasks_endpoint(request: Request):
+    user = request.session.get("google_user")
+    if not user:
+        raise HTTPException(status_code=401, detail={"code": "UNAUTHORIZED", "message": "You must be logged in."})
+    
+    from storage.database import _tasks
+    tasks = [t for t in _tasks.values() if getattr(t, "user_id", None) == user["sub"]]
+    # Sort by creation time if we had it, but for now just reverse list so newest is first
+    return list(reversed(tasks))
 
 async def run_task(task: Task):
     # Transition to planning
@@ -184,7 +223,7 @@ async def run_task(task: Task):
     await emit_event("goal_received", task.task_id, {"goal": task.goal})
     
     # Planning
-    plan_steps = create_plan(task.goal)
+    plan_steps = await create_plan(task.goal)
     task.plan = plan_steps
     task.total_steps = len(plan_steps)
     task.status = "executing"
@@ -245,18 +284,8 @@ async def approve_task_endpoint(task_id: str, request: ApproveRequest):
     task.status = "executing"
     save_task(task)
     
-    # Actually submit the transaction now that it is approved
-    tx_hash = submit_transaction({
-        "vendor": task.approval.vendor,
-        "amount": task.approval.amount
-    })
-    
-    # Record transaction hash in action
-    if task.actions and task.actions[-1].tool == "finance":
-        task.actions[-1].summary = tx_hash
-    
-    # Resume task execution
-    asyncio.create_task(resume_task(task))
+    # Resume task execution on the SAME step to execute the side-effect
+    asyncio.create_task(resume_task_same_step(task))
     
     return {
         "task_id": task_id,
@@ -264,8 +293,13 @@ async def approve_task_endpoint(task_id: str, request: ApproveRequest):
         "message": "Approval accepted."
     }
     
+async def resume_task_same_step(task: Task):
+    # Do NOT increment step, execute the same tool again with is_approved=True
+    await execute_task(task, emit_event)
+    save_task(task)
+
 async def resume_task(task: Task):
-    # Continue from next step
+    # Continue from next step (used by delete confirmation)
     task.current_step += 1
     await execute_task(task, emit_event)
     save_task(task)
@@ -309,7 +343,6 @@ async def confirm_delete_endpoint(task_id: str):
     
     if success:
         # Resume task execution
-        task.current_step += 1
         asyncio.create_task(resume_task(task))
         
         return {
